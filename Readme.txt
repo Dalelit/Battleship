@@ -7,4 +7,9 @@ Creating a battle ship game to learn...
 
 To use it, run the battleship.bat (in Windows).
 
-One browsers go to the url, I'm using Flask to serve the pages... just keeping it self contained... maybe I'll change that!
+On browsers go to the url that Flask says.
+
+To do:
+- get a web server, using Flask... which also lets you browse the code base
+- when you change the html/js you need to force a refresh from the brower
+
