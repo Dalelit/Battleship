@@ -17,13 +17,12 @@ class battle_ship_board_specs:
 
 specs = battle_ship_board_specs()
 
-
 class battle_ship_board_game:
 
     def place_boats(self, boat_specs):
         x = y = 0
         for boat in boat_specs:
-            self.boats.append(((x,y), (x,y+boat-1), False))
+            self.boats.append({'start':(x,y), 'end':(x,y+boat-1), 'length':boat})
             x+=1
 
     def __init__(self, specs, id):
@@ -32,6 +31,8 @@ class battle_ship_board_game:
         self.place_boats(specs.boats)
         self.player1 = ''
         self.player2 = ''
+        self.rows = specs.rows
+        self.columns = specs.columns
 
         active_games[self.id.lower()] = self
 
@@ -124,22 +125,5 @@ def join_game(gameid):
 
 if __name__ == '__main__':
 
-    # print(specs.json_str())
-    
-    new_game()
     g = battle_ship_board_game(specs, generate_game_name())
-    battle_ship_board_game(specs, generate_game_name())
-
-    g.player1 = "Joe"
-    g.player2 = "Bob"
-
-    print("Available games...")
-    print(available_games())
-
-    print("All games...")
-    print(all_games())
-
-    print("One game")
-    print(access_game('Game2'))
-    print(access_game('game2'))
-    print(access_game('game7'))
+    print(g.json_str())
