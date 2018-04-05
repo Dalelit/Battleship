@@ -17,8 +17,22 @@
 </form>
 </div>
 
-<div id="playerBoardDiv">Pboard</div>
-<div id="opponentBoardDiv"/>
+<div id="boardsDiv">
+    <table boarder="2">
+        <tr>
+            <td>
+                Player Board<br>
+                <canvas id="playerBoard" width="200" height="200"/>
+            </td>
+            <td>
+                Opponent Board<br>
+                <canvas id="opponentBoard" width="200" height="200"/>
+            </td>
+        </tr>
+    </table>
+    
+    
+</div>
 
 <div id="controls">
 <button type="button" id="clearBtn">Clear</button>
