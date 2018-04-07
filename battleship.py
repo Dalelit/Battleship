@@ -6,6 +6,7 @@ import websockets
 from threading import Thread
 
 active_games = dict()
+connected_users = set()
 wsAddr = "ws://"
 
 app = Flask(__name__, static_folder='')
@@ -128,12 +129,31 @@ def join_game(gameid):
 
     return game.json_str()
 
+async def wsBroadcast(msg, exlcudeSource = None):
+    print(f"Broadcasting to {len(connected_users)} clients")
+    for ws in connected_users:
+        if not exlcudeSource or ws != exlcudeSource:
+            await ws.send(msg)
+
+def wsMsgConsumer(msg):
+    print(f"Received msg: {msg}")
+    return msg
+
 async def wsMsgHandler(websocket, path):
-    keepRunning = True
-    while keepRunning:
-        msg = await websocket.recv()
-        print("Received msg: " + msg)
-        await websocket.send("Boo")
+
+    global connected_users
+    connected_users.add(websocket)
+
+    try:
+        keepRunning = True
+        while keepRunning:
+            msg = await websocket.recv()
+            responseMsg = wsMsgConsumer(msg)
+            if (responseMsg):
+                await wsBroadcast(responseMsg, websocket)
+    finally:
+        connected_users.remove(websocket)
+        keepRunning = False # To do - not sure I need this?
 
 class runApi(Thread):
     def run(self):

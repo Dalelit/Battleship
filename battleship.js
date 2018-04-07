@@ -3,6 +3,7 @@
     * - board size doesn't use the returned game info... still hard coded to 10
     * - not responsive
     * - consider the aesthetics...
+    * - disable create/join/etc... when the game starts
     */
 
 playerCanvas = document.getElementById("playerBoard");
@@ -22,6 +23,9 @@ cellSize = boardWidth / 10;
 radius = 0.4 * cellSize;
 wsSocket = null;
 testVar = "init";
+
+playerName = "";
+opponentName = "";
 
 function logInfo(msg) // to do - probably a better way
 {
@@ -96,32 +100,42 @@ function opponentBoardCellClicked(col, row)
 {
     // logInfo("Opponent board cell click " + col + "," + row);
     drawCell(opponentCanvas.getContext("2d"), row, col, "Green");
-    let msg = {row: row, col:col}
-    logInfo("wsSocket readyState " + wsSocket.readyState);
+    let msg = {row: row, col:col, src: playerName};
+    // logInfo("wsSocket readyState " + wsSocket.readyState);
     wsSocket.send(JSON.stringify(msg));
 }
 
 function msgReceived(event)
 {
-    console.log(event);
-    return false;
+    // console.log(event);
+    let gameMsg = JSON.parse(event.data);
+    // console.log(gameMsg);
+    
+    if (gameMsg.src == playerName)
+    {
+        logInfo("Got a message from our selves?!");
+        return;
+    }
+
+    drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Red");
 }
 
 function gameCreated(data, status)
 {
-    logInfo(status);
-    logInfo(data);
+    // logInfo(status);
+    // logInfo(data);
     var gameInfo = JSON.parse(data);
+    // logGameInfo(gameInfo);
+
     createPlayerBoard(gameInfo);
     createOpponentBoard(gameInfo);
-    logGameInfo(gameInfo);
 
     // connect to socket
     wsSocket = new WebSocket(gameInfo.wsAddr);
     // wsSocket.onopen = function(event) { wsSocket.send("hello"); };
-    wsSocket.onclose = function (event) { console.log("WS on close"); console.log(event); };
+    // wsSocket.onclose = function (event) { console.log("WS on close"); console.log(event); };
     wsSocket.onmessage = msgReceived;
-    logInfo("wsSocket open readyState " + wsSocket.readyState);
+    // logInfo("wsSocket open readyState " + wsSocket.readyState);
 }
 
 function getData(url, callback)
@@ -140,31 +154,43 @@ function getData(url, callback)
 function createGame()
 {
     // to do - use encodeURIComponent on the values?
+    playerName = document.getElementById("playerName").value;
     let url = document.getElementById("serverUrl").value;
     let gId = document.getElementById("gameId").value;
-    let pNm = document.getElementById("playerName").value;
-    let createGameUrl = url + "newgame?gameId=" + gId + "&player=" + pNm;
+    let createGameUrl = url + "newgame?gameId=" + gId + "&player=" + playerName;
 
     getData(createGameUrl, gameCreated);
 }
 
 function gameJoined(data, status)
 {
-    logInfo(status);
-    logInfo(data);
+    // logInfo(status);
+    // logInfo(data);
+    if (data == "No free player spot")
+    {
+        logInfo("No free player spot");
+        return;
+    }
+
     let gameInfo = JSON.parse(data);
-    logGameInfo(gameInfo);
+    // logGameInfo(gameInfo);
+
+    createPlayerBoard(gameInfo);
+    createOpponentBoard(gameInfo);
+
+    wsSocket = new WebSocket(gameInfo.wsAddr);
+    wsSocket.onmessage = msgReceived;
 }
 
 function joinGame()
 {
     // to do - use encodeURIComponent on the values?
+    playerName = document.getElementById("playerName").value;
     let url = document.getElementById("serverUrl").value;
     let gId = document.getElementById("gameId").value;
-    let pNm = document.getElementById("playerName").value;
-    let joinGameUrl = url + "games/" + gId + "/join?player=" + pNm;
+    let joinGameUrl = url + "games/" + gId + "/join?player=" + playerName;
 
-    getData(joinGameUrl, gameJoined );
+    getData(joinGameUrl, gameJoined);
 }
 
 function logAvailableGames()
