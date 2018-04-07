@@ -10,6 +10,7 @@ To use it, run the battleship.bat (in Windows).
 On browsers go to the url that Flask says.
 
 To do:
-- get a web server, using Flask... which also lets you browse the code base
-- when you change the html/js you need to force a refresh from the brower
+- Get a web server. Currently using Flask... which also lets you browse the code base (nice feature!)
+- Work out if/how to have Flask APIs and the webSockets working off the same config, but in different programs
+- When you change the html/js you need to force a refresh from the brower
 

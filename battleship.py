@@ -1,8 +1,12 @@
 from flask import Flask, send_from_directory
 from flask import request
 from json import dumps
+import asyncio
+import websockets
+from threading import Thread
 
 active_games = dict()
+wsAddr = "ws://"
 
 app = Flask(__name__, static_folder='')
 
@@ -33,6 +37,7 @@ class battle_ship_board_game:
         self.player2 = ''
         self.rows = specs.rows
         self.columns = specs.columns
+        self.wsAddr = wsAddr
 
         active_games[self.id.lower()] = self
 
@@ -81,6 +86,7 @@ def new_game():
         game.player1 = request.args['player']
 
     print(f'Created game {gameId}')
+    print(game.json_str())
 
     return game.json_str()
 
@@ -122,8 +128,37 @@ def join_game(gameid):
 
     return game.json_str()
 
+async def wsMsgHandler(websocket, path):
+    keepRunning = True
+    while keepRunning:
+        msg = await websocket.recv()
+        print("Received msg: " + msg)
+        await websocket.send("Boo")
+
+class runApi(Thread):
+    def run(self):
+        print("Start flask")
+        app.run()
+
+def runWebSocket():
+    print("Start websocket")
+    start_server = websockets.serve(wsMsgHandler, 'localhost')
+    asyncio.get_event_loop().run_until_complete(start_server)
+
+    # To do - is this really the best way to get the ws address?
+    socks = [x.getsockname() for x in start_server.ws_server.sockets if x.getsockname()[0] != "::1"]
+    print(socks)
+    global wsAddr
+    wsAddr = f"ws://{socks[0][0]}:{socks[0][1]}"
+    print(f"Websocket addr is: {wsAddr}")
+    asyncio.get_event_loop().run_forever()
+
 
 if __name__ == '__main__':
 
-    g = battle_ship_board_game(specs, generate_game_name())
-    print(g.json_str())
+    apiThread = runApi()
+    apiThread.start()
+
+    runWebSocket()
+
+    apiThread.join()
