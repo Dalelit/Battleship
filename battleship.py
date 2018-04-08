@@ -28,7 +28,7 @@ class battle_ship_board_game:
         x = y = 0
         for boat in boat_specs:
             self.boats.append({'start':(x,y), 'end':(x,y+boat-1), 'length':boat})
-            x+=1
+            x+=2
 
     def __init__(self, specs, id):
         self.id = id
@@ -51,6 +51,9 @@ class battle_ship_board_game:
 
     def json_str(self):
         return dumps(self.__dict__)
+    
+    def check_boat_position_is_valid(self, start, end):
+        pass
 
 def gameid_check_decorator(func):
     def wrap(gameid):
@@ -130,30 +133,26 @@ def join_game(gameid):
     return game.json_str()
 
 async def wsBroadcast(msg, exlcudeSource = None):
-    print(f"Broadcasting to {len(connected_users)} clients")
     for ws in connected_users:
         if not exlcudeSource or ws != exlcudeSource:
             await ws.send(msg)
 
 def wsMsgConsumer(msg):
     print(f"Received msg: {msg}")
+    # To Do - check results of hit and respond
     return msg
 
 async def wsMsgHandler(websocket, path):
-
-    global connected_users
-    connected_users.add(websocket)
-
     try:
-        keepRunning = True
-        while keepRunning:
-            msg = await websocket.recv()
+        connected_users.add(websocket)
+        
+        async for msg in websocket:
             responseMsg = wsMsgConsumer(msg)
             if (responseMsg):
                 await wsBroadcast(responseMsg, websocket)
     finally:
         connected_users.remove(websocket)
-        keepRunning = False # To do - not sure I need this?
+
 
 class runApi(Thread):
     def run(self):

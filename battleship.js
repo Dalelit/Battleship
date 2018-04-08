@@ -40,6 +40,26 @@ function drawCell(context, row, col, color)
     context.fill();
 }
 
+function drawCellsBox(context, c1, r1, c2, r2, color)
+{
+    let x1 = c1 * cellSize + cellSize/2;
+    let y1 = r1 * cellSize + cellSize/2;
+    let x2 = c2 * cellSize + cellSize/2;
+    let y2 = r2 * cellSize + cellSize/2;
+
+    context.beginPath();
+    if (r1 == r2) //  horizontal
+    {
+        context.rect(x1, y1-radius, x2-x1, 2*radius);
+    }
+    else //  vertical
+    {
+        context.rect(x1-radius, y1, 2*radius, y2-y1);
+    }
+    context.fillStyle = color;
+    context.fill();
+}
+
 function drawBoard(canvas, columns, rows, color)
 {
     let ctx = canvas.getContext("2d");
@@ -53,15 +73,15 @@ function drawBoard(canvas, columns, rows, color)
 function drawBoat(canvas, c1, r1, c2, r2)
 {
     let ctx = canvas.getContext("2d");
-    let fillColor = "Grey";
 
+    drawCellsBox(ctx, c1, r1, c2, r2, "LightGrey");
     if (r1 == r2) //  horizontal boat
     {
-        for (let i = c1; i <= c2; i++) drawCell(ctx, r1, i, fillColor);
+        for (let i = c1; i <= c2; i++) drawCell(ctx, r1, i, "Grey");
     }
     else //  vertical boat
     {
-        for (let i = r1; i <= r2; i++) drawCell(ctx, i, c1, fillColor);
+        for (let i = r1; i <= r2; i++) drawCell(ctx, i, c1, "Grey");
     }
 }
 
