@@ -35,15 +35,14 @@ def new_game():
         gameId = generate_game_name()
 
     game = battle_ship_board_game(specs, gameId, wsAddr)
-    active_games[game.id] = game
+    active_games[game.name.lower()] = game
 
     if [x for x in request.args if x == 'player']: # Is there a better way to check for args?
         game.player1 = request.args['player']
 
     print(f'Created game {gameId}')
-    print(game.json_str())
 
-    return game.json_str()
+    return game.json_str_player1()
 
 @app.route('/availablegames')
 def available_games():
@@ -68,9 +67,7 @@ def join_game(gameid):
     player = request.args['player']
     if player:
         print(f'Player {player} joining game {gameid}')
-        if not game.player1:
-            game.player1 = player
-        elif not game.player2:
+        if not game.player2:
             game.player2 = player
         else:
             print('Error - no free player spot')
@@ -79,9 +76,10 @@ def join_game(gameid):
         print('Could not find player name')
         return 'No player arg'
 
-    return game.json_str()
+    return game.json_str_player2()
 
 async def wsBroadcast(msg, exlcudeSource = None):
+    # print(f'Broadcast {msg}. ExcludeSource {exlcudeSource}')
     for ws in connected_users:
         if not exlcudeSource or ws != exlcudeSource:
             await ws.send(msg)

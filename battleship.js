@@ -1,6 +1,7 @@
 /*
     * To Do - tidy ups
     * - board size doesn't use the returned game info... still hard coded to 10
+    * - clear canvas when new game started or joined
     * - not responsive
     * - consider the aesthetics...
     * - disable create/join/etc... when the game starts
@@ -10,9 +11,14 @@ playerCanvas = document.getElementById("playerBoard");
 opponentCanvas = document.getElementById("opponentBoard");
 logDiv = document.getElementById("logDiv");
    
-document.getElementById("joinBtn").addEventListener('click', joinGame);
+joinBtn = document.getElementById("joinBtn");
+createBtn = document.getElementById("createBtn");
+beginBtn = document.getElementById("beginBtn");
+
+joinBtn.addEventListener('click', joinGame);
+createBtn.addEventListener('click', createGame);
+beginBtn.addEventListener('click', beginGame);
 document.getElementById("clearBtn").addEventListener('click', function() {logDiv.innerText = "";});
-document.getElementById("createBtn").addEventListener('click', createGame);
 document.getElementById("logGamesBtn").addEventListener('click', logAvailableGames);
 document.getElementById("playerBoard").addEventListener('click', playerBoardClicked);
 document.getElementById("opponentBoard").addEventListener('click', opponentBoardClicked);
@@ -27,9 +33,35 @@ testVar = "init";
 playerName = "";
 opponentName = "";
 
+// support functions
+
 function logInfo(msg) // to do - probably a better way
 {
     logDiv.innerText =  msg + "\n" + logDiv.innerText;
+}
+
+function getData(url, callback)
+{
+    let xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            callback(this.responseText, this.status);
+       }
+    };
+    xhttp.open("GET", url, true);
+    xhttp.send();
+}
+
+// drawing functions
+
+function clearBoards()
+{
+    let ctx = playerCanvas.getContext("2d");
+    ctx.clearRect(0,0,playerCanvas.width, playerCanvas.height);
+
+    ctx = opponentCanvas.getContext("2d");
+    ctx.clearRect(0,0,opponentCanvas.width, opponentCanvas.height);
 }
 
 function drawCell(context, row, col, color)
@@ -85,6 +117,8 @@ function drawBoat(canvas, c1, r1, c2, r2)
     }
 }
 
+//game/ui functions
+
 function createPlayerBoard(gameInfo)
 {
     drawBoard(playerCanvas, gameInfo.columns, gameInfo.rows, "SkyBlue");
@@ -127,7 +161,7 @@ function opponentBoardCellClicked(col, row)
 
 function msgReceived(event)
 {
-    // console.log(event);
+    console.log(event);
     let gameMsg = JSON.parse(event.data);
     // console.log(gameMsg);
     
@@ -147,28 +181,19 @@ function gameCreated(data, status)
     var gameInfo = JSON.parse(data);
     // logGameInfo(gameInfo);
 
+    clearBoards();
     createPlayerBoard(gameInfo);
     createOpponentBoard(gameInfo);
 
     // connect to socket
+    if (wsSocket) wsSocket.close();
     wsSocket = new WebSocket(gameInfo.wsAddr);
     // wsSocket.onopen = function(event) { wsSocket.send("hello"); };
     // wsSocket.onclose = function (event) { console.log("WS on close"); console.log(event); };
     wsSocket.onmessage = msgReceived;
     // logInfo("wsSocket open readyState " + wsSocket.readyState);
-}
 
-function getData(url, callback)
-{
-    let xhttp = new XMLHttpRequest();
-
-    xhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-            callback(this.responseText, this.status);
-       }
-    };
-    xhttp.open("GET", url, true);
-    xhttp.send();
+    beginBtn.disabled = false;
 }
 
 function createGame()
@@ -184,22 +209,13 @@ function createGame()
 
 function gameJoined(data, status)
 {
-    // logInfo(status);
-    // logInfo(data);
     if (data == "No free player spot")
     {
         logInfo("No free player spot");
         return;
     }
 
-    let gameInfo = JSON.parse(data);
-    // logGameInfo(gameInfo);
-
-    createPlayerBoard(gameInfo);
-    createOpponentBoard(gameInfo);
-
-    wsSocket = new WebSocket(gameInfo.wsAddr);
-    wsSocket.onmessage = msgReceived;
+    gameCreated(data, status)
 }
 
 function joinGame()
@@ -211,6 +227,10 @@ function joinGame()
     let joinGameUrl = url + "games/" + gId + "/join?player=" + playerName;
 
     getData(joinGameUrl, gameJoined);
+}
+
+function beginGame()
+{
 }
 
 function logAvailableGames()
