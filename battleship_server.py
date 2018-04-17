@@ -1,13 +1,11 @@
 from flask import Flask, send_from_directory, request
-from json import dumps
+from json import dumps, loads
 import asyncio
 import websockets
 from threading import Thread
 
-from battleship import battle_ship_board_game, battle_ship_board_specs
+import battleship_manager as mgr
 
-active_games = dict()
-specs = battle_ship_board_specs()
 
 connected_users = set()
 wsAddr = "ws://"
@@ -22,61 +20,59 @@ def main_pages(path):
 
 @app.route('/specs')
 def game_specs():
-    return dumps(specs.json_str())
+    return dumps(mgr.specs_info())
 
 def generate_game_name():
-    return f"Game{active_games.__len__()+1}"
+    return f"Game{mgr.active_games.__len__()+1}"
 
 @app.route('/newgame')
 def new_game():
-    if [x for x in request.args if x == 'gameId']: # Is there a better way to check for args?
-        gameId = request.args['gameId']
-    else:
-        gameId = generate_game_name()
+    # if [x for x in request.args if x == 'gameName']: # Is there a better way to check for args?
+    #     gameName = request.args['gameName']
+    # else:
+    #     gameName = generate_game_name()
 
-    game = battle_ship_board_game(specs, gameId, wsAddr)
-    active_games[game.name.lower()] = game
+    # if [x for x in request.args if x == 'player']: # Is there a better way to check for args?
+    
+    gameName = request.args['gameName']
+    playerName = request.args['player']
 
-    if [x for x in request.args if x == 'player']: # Is there a better way to check for args?
-        game.player1 = request.args['player']
+    game = mgr.create_game(gameName, playerName)
 
-    print(f'Created game {gameId}')
+    print(f'Created game {gameName}')
 
-    return game.json_str_player1()
+    game_info = game.player1_info()
+    game_info['wsAddr'] = wsAddr
 
-@app.route('/availablegames')
-def available_games():
-    games = [v.status_info() for k,v in active_games.items() if v.player1 == '' or v.player2 == '']
-    return dumps(games)
+    return dumps(game_info)
 
-@app.route('/games')
-def all_games():
-    games = [v.status_info() for k,v in active_games.items()]
-    return dumps(games)
+# @app.route('/availablegames')
+# def available_games():
+#     games = [v.status_info() for k,v in mgr.active_games.items() if v.player1 == '' or v.player2 == '']
+#     return dumps(games)
 
-@app.route('/games/<gameid>')
-def access_game(gameid):
-    return dumps(active_games[gameid].status_info())
+# @app.route('/games')
+# def all_games():
+#     games = [v.status_info() for k,v in mgr.active_games.items()]
+#     return dumps(games)
 
-@app.route('/games/<gameid>/join')
-def join_game(gameid):
-    # print(f'Joining game {gameid}')
+# @app.route('/games/<gameid>')
+# def access_game(gameid):
+#     return dumps(mgr.active_games[gameid].game_info())
 
-    game = active_games[gameid.lower()]
+@app.route('/games/<gameName>/join')
+def join_game(gameName):
+    # To Do - no error checking
 
-    player = request.args['player']
-    if player:
-        print(f'Player {player} joining game {gameid}')
-        if not game.player2:
-            game.player2 = player
-        else:
-            print('Error - no free player spot')
-            return 'No free player spot'
-    else:
-        print('Could not find player name')
-        return 'No player arg'
+    playerName = request.args['player']
 
-    return game.json_str_player2()
+    game = mgr.find_game(gameName)
+    mgr.join_game(game, playerName)
+
+    game_info = game.player2_info()
+    game_info['wsAddr'] = wsAddr
+
+    return dumps(game_info)
 
 async def wsBroadcast(msg, exlcudeSource = None):
     # print(f'Broadcast {msg}. ExcludeSource {exlcudeSource}')
@@ -84,19 +80,46 @@ async def wsBroadcast(msg, exlcudeSource = None):
         if not exlcudeSource or ws != exlcudeSource:
             await ws.send(msg)
 
-def wsMsgConsumer(msg):
-    print(f"Received msg: {msg}")
-    # To Do - check results of hit and respond
-    return msg
+async def wsMsgConsumer(msg, game, player):
+    msgDict = loads(msg)
+    # print(msgDict)
+
+    print(f'{player.id} in {game.id} did {msgDict["action"]}')
+
+    if msgDict['action'] == 'fire':
+        result = mgr.player_fired(game, player, msgDict['row'], msgDict['col'])
+        # print(result)
+        if result:
+            await player.ws.send(dumps(result[0]))
+            await player.opponent.ws.send(dumps(result[1]))
+
+    elif msgDict['action'] == 'ready':
+        print(f'{player.id} in {game.id} is ready.')
+
+    else:
+        print('Unknown action in msg: ' + msg)
 
 async def wsMsgHandler(websocket, path):
     try:
+        # Track all users. Good for a broadcast message
         connected_users.add(websocket)
-        
+
+        # First message should be a connection, so find the game and player for subsequent messages
+        firstMsgDict = loads(await websocket.recv())
+
+        # To Do - not checking if we find things... assuming we do at the moment
+        # if msgDict['action'] == 'connect': # should always be this action
+
+        game = mgr.find_game_by_id(firstMsgDict['gameId'])
+        player = mgr.find_player_by_id(game, firstMsgDict['playerId'])
+
+        player.ws = websocket
+        print(f'{player.id} in {game.id} is connected.')
+
+        # now handle all messages        
         async for msg in websocket:
-            responseMsg = wsMsgConsumer(msg)
-            if (responseMsg):
-                await wsBroadcast(responseMsg, websocket)
+            await wsMsgConsumer(msg, game, player)
+
     finally:
         connected_users.remove(websocket)
 

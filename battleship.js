@@ -28,10 +28,12 @@ boardHeight = boardWidth;
 cellSize = boardWidth / 10;
 radius = 0.4 * cellSize;
 wsSocket = null;
-testVar = "init";
 
 playerName = "";
 opponentName = "";
+currentTurn = false;
+gameId = null;
+playerId = null;
 
 // support functions
 
@@ -153,8 +155,8 @@ function opponentBoardClicked(event)
 function opponentBoardCellClicked(col, row)
 {
     // logInfo("Opponent board cell click " + col + "," + row);
-    drawCell(opponentCanvas.getContext("2d"), row, col, "Green");
-    let msg = {row: row, col:col, src: playerName};
+    // drawCell(opponentCanvas.getContext("2d"), row, col, "Green");
+    let msg = {action: 'fire', row: row, col:col};
     // logInfo("wsSocket readyState " + wsSocket.readyState);
     wsSocket.send(JSON.stringify(msg));
 }
@@ -164,14 +166,44 @@ function msgReceived(event)
     console.log(event);
     let gameMsg = JSON.parse(event.data);
     // console.log(gameMsg);
-    
-    if (gameMsg.src == playerName)
+
+    if (gameMsg.action == 'fired')
     {
-        logInfo("Got a message from our selves?!");
-        return;
+        if (gameMsg.result == 'hit')
+            drawCell(opponentCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Red");
+        else if (gameMsg.result == 'sunk')
+            drawCell(opponentCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Orange");
+        else // 'missed'
+            drawCell(opponentCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Black");
+
+        if (gameMsg.turn == 'won')
+        {
+            logInfo('Yay... you won')
+        }
+    }
+    else if (gameMsg.action == 'targeted')
+    {
+        if (gameMsg.result == 'hit')
+            drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Red");
+        else if (gameMsg.result == 'sunk')
+            drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Orange");
+        else // 'missed'
+            drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Black");
+
+        if (gameMsg.turn == 'lost')
+        {
+            logInfo('Sorry... you lost')
+        }
+    }
+    else if (gameMsg.action == 'start')
+    {
+        logInfo('Start the game');
+    }
+    else if (gameMsg.action == 'wait')
+    {
+        logInfo('Wait for other player');
     }
 
-    drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Red");
 }
 
 function gameCreated(data, status)
@@ -179,7 +211,7 @@ function gameCreated(data, status)
     // logInfo(status);
     // logInfo(data);
     var gameInfo = JSON.parse(data);
-    // logGameInfo(gameInfo);
+    console.log(gameInfo);
 
     clearBoards();
     createPlayerBoard(gameInfo);
@@ -188,10 +220,9 @@ function gameCreated(data, status)
     // connect to socket
     if (wsSocket) wsSocket.close();
     wsSocket = new WebSocket(gameInfo.wsAddr);
-    // wsSocket.onopen = function(event) { wsSocket.send("hello"); };
+    wsSocket.onopen = function(event) { wsSocket.send(JSON.stringify({gameId:gameInfo.gameId, playerId:gameInfo.playerId, action:'connect'})); };
     // wsSocket.onclose = function (event) { console.log("WS on close"); console.log(event); };
     wsSocket.onmessage = msgReceived;
-    // logInfo("wsSocket open readyState " + wsSocket.readyState);
 
     beginBtn.disabled = false;
 }
@@ -201,8 +232,8 @@ function createGame()
     // to do - use encodeURIComponent on the values?
     playerName = document.getElementById("playerName").value;
     let url = document.getElementById("serverUrl").value;
-    let gId = document.getElementById("gameId").value;
-    let createGameUrl = url + "newgame?gameId=" + gId + "&player=" + playerName;
+    let gId = document.getElementById("gameName").value;
+    let createGameUrl = url + "newgame?gameName=" + gId + "&player=" + playerName;
 
     getData(createGameUrl, gameCreated);
 }
@@ -223,7 +254,7 @@ function joinGame()
     // to do - use encodeURIComponent on the values?
     playerName = document.getElementById("playerName").value;
     let url = document.getElementById("serverUrl").value;
-    let gId = document.getElementById("gameId").value;
+    let gId = document.getElementById("gameName").value;
     let joinGameUrl = url + "games/" + gId + "/join?player=" + playerName;
 
     getData(joinGameUrl, gameJoined);
@@ -231,6 +262,10 @@ function joinGame()
 
 function beginGame()
 {
+    currentTurn = false;
+
+    let msg = {action: 'ready'};
+    wsSocket.send(JSON.stringify(msg));
 }
 
 function logAvailableGames()
