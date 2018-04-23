@@ -5,6 +5,8 @@
     * - not responsive
     * - consider the aesthetics...
     * - disable create/join/etc... when the game starts
+    * - stop the game when you've won/lost
+    * - add a particle simulator for the explosion when you hit!!! Explosions!!!
     */
 
 playerCanvas = document.getElementById("playerBoard");
@@ -17,8 +19,9 @@ beginBtn = document.getElementById("beginBtn");
 
 joinBtn.addEventListener('click', joinGame);
 createBtn.addEventListener('click', createGame);
+createBtn.addEventListener('touchend', createGame);
 beginBtn.addEventListener('click', beginGame);
-document.getElementById("clearBtn").addEventListener('click', function() {logDiv.innerText = "";});
+document.getElementById("clearBtn").addEventListener('click', function() {logSet("");});
 document.getElementById("logGamesBtn").addEventListener('click', logAvailableGames);
 document.getElementById("playerBoard").addEventListener('click', playerBoardClicked);
 document.getElementById("opponentBoard").addEventListener('click', opponentBoardClicked);
@@ -35,11 +38,19 @@ currentTurn = false;
 gameId = null;
 playerId = null;
 
+serverAddr = window.location.host;
+// document.getElementById("serverAddr").value = serverAddr;
+
 // support functions
 
 function logInfo(msg) // to do - probably a better way
 {
     logDiv.innerText =  msg + "\n" + logDiv.innerText;
+}
+
+function logSet(msg) // to do - probably a better way
+{
+    logDiv.innerText =  msg;
 }
 
 function getData(url, callback)
@@ -149,6 +160,8 @@ function createOpponentBoard(gameInfo)
 
 function opponentBoardClicked(event)
 {
+    if (!currentTurn) return;
+
     opponentBoardCellClicked(Math.floor(event.offsetX / cellSize), Math.floor(event.offsetY / cellSize));
 }
 
@@ -179,6 +192,10 @@ function msgReceived(event)
         if (gameMsg.turn == 'won')
         {
             logInfo('Yay... you won')
+            currentTurn = false;
+        } else if (gameMsg.turn == 'opponent')
+        {
+            currentTurn = false;
         }
     }
     else if (gameMsg.action == 'targeted')
@@ -193,15 +210,32 @@ function msgReceived(event)
         if (gameMsg.turn == 'lost')
         {
             logInfo('Sorry... you lost')
+            currentTurn = false;
+        } else if (gameMsg.turn == 'player')
+        {
+            currentTurn = true;
         }
     }
     else if (gameMsg.action == 'start')
     {
         logInfo('Start the game');
+        if (gameMsg.turn == 'player')
+        {
+            currentTurn = true;
+            logInfo('You have first move');
+        } else // if (gameMsg.turn == 'opponent')
+        {
+            logInfo('Other player moves first');
+        }
     }
     else if (gameMsg.action == 'wait')
     {
         logInfo('Wait for other player');
+    }
+    else if (gameMsg.action == 'finished')
+    {
+        logInfo('Finished');
+        // To Do - close up all the connections
     }
 
 }
@@ -229,11 +263,13 @@ function gameCreated(data, status)
 
 function createGame()
 {
+    logSet("");
+
     // to do - use encodeURIComponent on the values?
     playerName = document.getElementById("playerName").value;
-    let url = document.getElementById("serverUrl").value;
     let gId = document.getElementById("gameName").value;
-    let createGameUrl = url + "newgame?gameName=" + gId + "&player=" + playerName;
+    let createGameUrl = "http://" + serverAddr + "/newgame?gameName=" + gId + "&player=" + playerName;
+    console.log(createGameUrl);
 
     getData(createGameUrl, gameCreated);
 }
@@ -251,11 +287,11 @@ function gameJoined(data, status)
 
 function joinGame()
 {
+    logSet("");
     // to do - use encodeURIComponent on the values?
     playerName = document.getElementById("playerName").value;
-    let url = document.getElementById("serverUrl").value;
     let gId = document.getElementById("gameName").value;
-    let joinGameUrl = url + "games/" + gId + "/join?player=" + playerName;
+    let joinGameUrl = "http://" + serverAddr + "/games/" + gId + "/join?player=" + playerName;
 
     getData(joinGameUrl, gameJoined);
 }

@@ -51,10 +51,10 @@ def new_game():
 #     games = [v.status_info() for k,v in mgr.active_games.items() if v.player1 == '' or v.player2 == '']
 #     return dumps(games)
 
-# @app.route('/games')
-# def all_games():
-#     games = [v.status_info() for k,v in mgr.active_games.items()]
-#     return dumps(games)
+@app.route('/games')
+def all_games():
+    games = [v.game_info() for k,v in mgr.active_games.items()]
+    return dumps(games)
 
 # @app.route('/games/<gameid>')
 # def access_game(gameid):
@@ -74,30 +74,40 @@ def join_game(gameName):
 
     return dumps(game_info)
 
-async def wsBroadcast(msg, exlcudeSource = None):
-    # print(f'Broadcast {msg}. ExcludeSource {exlcudeSource}')
-    for ws in connected_users:
-        if not exlcudeSource or ws != exlcudeSource:
-            await ws.send(msg)
+# async def wsBroadcast(msg, exlcudeSource = None):
+#     for ws in connected_users:
+#         if not exlcudeSource or ws != exlcudeSource:
+#             await ws.send(msg)
 
 async def wsMsgConsumer(msg, game, player):
     msgDict = loads(msg)
     # print(msgDict)
 
-    print(f'{player.id} in {game.id} did {msgDict["action"]}')
+    # print(f'{player.id} in {game.id} did {msgDict["action"]}')
 
     if msgDict['action'] == 'fire':
         result = mgr.player_fired(game, player, msgDict['row'], msgDict['col'])
-        # print(result)
         if result:
             await player.ws.send(dumps(result[0]))
             await player.opponent.ws.send(dumps(result[1]))
 
     elif msgDict['action'] == 'ready':
         print(f'{player.id} in {game.id} is ready.')
+        player.ready = True
+
+        if game.players_ready():
+            await player.ws.send(dumps({'action':'start', 'turn':'player'}))
+            await player.opponent.ws.send(dumps({'action':'start', 'turn':'opponent'}))
+        else:
+            await player.ws.send(dumps({'action':'wait'}))
 
     else:
         print('Unknown action in msg: ' + msg)
+
+    if not game.active:
+        print(f'Game {game.id} finished')
+        await player.ws.send(dumps({'action':'finished'}))
+        await player.opponent.ws.send(dumps({'action':'finished'}))
 
 async def wsMsgHandler(websocket, path):
     try:
@@ -116,9 +126,13 @@ async def wsMsgHandler(websocket, path):
         player.ws = websocket
         print(f'{player.id} in {game.id} is connected.')
 
+        # To Do - could have the wait for the ready message here as well
+
         # now handle all messages        
         async for msg in websocket:
             await wsMsgConsumer(msg, game, player)
+
+    # To Do - add a catch for when the connection is broken, e.g player leaving or starting a new game
 
     finally:
         connected_users.remove(websocket)
@@ -127,7 +141,7 @@ async def wsMsgHandler(websocket, path):
 class runApi(Thread):
     def run(self):
         print("Start flask")
-        app.run()
+        app.run(host="0.0.0.0", port=5000)
 
 def runWebSocket():
     print("Start websocket")

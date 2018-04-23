@@ -16,6 +16,9 @@ def create_game(gameName, playerName):
 
     return game
 
+def end_game(game):
+    del(active_games[game.gameName.lower()])
+
 def find_game(gameName):
     return active_games[gameName.lower()]
 
@@ -85,6 +88,7 @@ def player_fired(game, player, row, col):
         if sum(player.boats_hitcount) == 0:
             results[0]['turn'] = 'won'
             results[1]['turn'] = 'lost'
+            game.active = False
         else:
             results[0]['turn'] = 'player'
             results[1]['turn'] = 'opponent'
@@ -93,7 +97,6 @@ def player_fired(game, player, row, col):
         results[0]['result'] = results[1]['result'] = 'miss'
         results[0]['turn'] = 'opponent'
         results[1]['turn'] = 'player'
-    
 
     player.opponent.board[row][col] = (boat_num, True)
 

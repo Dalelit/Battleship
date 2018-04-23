@@ -34,6 +34,7 @@ class battle_ship_board_game:
 
         self.name = name
         self.id = f"{name.lower()}{game_count}"
+        self.active = True
         self.rows = specs.rows
         self.columns = specs.columns
 
@@ -52,6 +53,7 @@ class battle_ship_board_game:
         d = dict()
         d['name'] = self.name
         d['gameId'] = self.id
+        d['active'] = self.active
         d['player1'] = self.player1.name
         d['rows'] = self.rows
         d['columns'] = self.columns
@@ -74,6 +76,9 @@ class battle_ship_board_game:
         d['boats'] = self.p2_boats
         d['playerId'] = self.player2.id
         return d
+
+    def players_ready(self):
+        return self.player1 and self.player2 and self.player1.ready and self.player2.ready
     
     def randomly_place_boats(self, board, boats, boat_specs):
         for num, length in enumerate(boat_specs):
