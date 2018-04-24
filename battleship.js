@@ -19,19 +19,18 @@ beginBtn = document.getElementById("beginBtn");
 
 joinBtn.addEventListener('click', joinGame);
 createBtn.addEventListener('click', createGame);
-createBtn.addEventListener('touchend', createGame);
 beginBtn.addEventListener('click', beginGame);
 document.getElementById("clearBtn").addEventListener('click', function() {logSet("");});
 document.getElementById("logGamesBtn").addEventListener('click', logAvailableGames);
 document.getElementById("playerBoard").addEventListener('click', playerBoardClicked);
 document.getElementById("opponentBoard").addEventListener('click', opponentBoardClicked);
 
-boardWidth = 200;
+boardWidth = document.getElementById("opponentBoard").width;
 boardHeight = boardWidth;
 cellSize = boardWidth / 10;
 radius = 0.4 * cellSize;
-wsSocket = null;
 
+wsSocket = null;
 playerName = "";
 opponentName = "";
 currentTurn = false;
@@ -39,7 +38,7 @@ gameId = null;
 playerId = null;
 
 serverAddr = window.location.host;
-// document.getElementById("serverAddr").value = serverAddr;
+serverIP = window.location.hostname;
 
 // support functions
 
@@ -253,6 +252,8 @@ function gameCreated(data, status)
 
     // connect to socket
     if (wsSocket) wsSocket.close();
+    
+    // console.log(gameInfo.wsAddr);
     wsSocket = new WebSocket(gameInfo.wsAddr);
     wsSocket.onopen = function(event) { wsSocket.send(JSON.stringify({gameId:gameInfo.gameId, playerId:gameInfo.playerId, action:'connect'})); };
     // wsSocket.onclose = function (event) { console.log("WS on close"); console.log(event); };

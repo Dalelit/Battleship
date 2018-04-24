@@ -5,9 +5,9 @@ Creating a battle ship game to learn...
 - Restful apis, using Flask
 - Web sockets
 
-To use it, run the battleship.bat (in Windows).
+To use it, run the battleship.bat (in Windows). Check your firewall isn't block network connections.
 
-On browsers go to the url that Flask says /battleship.html
+On browsers go to the url that Flask says .../battleship.html
 
 Backlog:
 - Refactor it... it's a mess of hacks just to get it working

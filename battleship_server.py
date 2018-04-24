@@ -3,7 +3,6 @@ from json import dumps, loads
 import asyncio
 import websockets
 from threading import Thread
-
 import battleship_manager as mgr
 
 
@@ -145,15 +144,22 @@ class runApi(Thread):
 
 def runWebSocket():
     print("Start websocket")
-    start_server = websockets.serve(wsMsgHandler, 'localhost')
+
+    # To Do - check if this is the best way to get the IP address, to then serve for the websocket?
+    # start_server = websockets.serve(wsMsgHandler, 'localhost')
+    from socket import gethostname, gethostbyname
+    hostIP = gethostbyname(gethostname())
+    # print("Host ----> " + hostIP)
+    start_server = websockets.serve(wsMsgHandler, hostIP)
     asyncio.get_event_loop().run_until_complete(start_server)
 
     # To do - is this really the best way to get the ws address?
+    # print([x.getsockname() for x in start_server.ws_server.sockets])
     socks = [x.getsockname() for x in start_server.ws_server.sockets if x.getsockname()[0] != "::1"]
     print(socks)
     global wsAddr
-    wsAddr = f"ws://{socks[0][0]}:{socks[0][1]}"
-    print(f"Websocket addr is: {wsAddr}")
+    wsAddr = f"ws://{hostIP}:{socks[0][1]}"
+    print(f"Websocket addr is {wsAddr}")
     asyncio.get_event_loop().run_forever()
 
 
