@@ -9,36 +9,42 @@
     * - add a particle simulator for the explosion when you hit!!! Explosions!!!
     */
 
-playerCanvas = document.getElementById("playerBoard");
-opponentCanvas = document.getElementById("opponentBoard");
-logDiv = document.getElementById("logDiv");
+function onLoadInitialise()
+{
+    playerCanvas = document.getElementById("playerBoard");
+    opponentCanvas = document.getElementById("opponentBoard");
+    logDiv = document.getElementById("logDiv");
+       
+    joinBtn = document.getElementById("joinBtn");
+    createBtn = document.getElementById("createBtn");
+    beginBtn = document.getElementById("beginBtn");
+    
+    joinBtn.addEventListener('click', joinGame);
+    createBtn.addEventListener('click', createGame);
+    beginBtn.addEventListener('click', beginGame);
+    document.getElementById("clearBtn").addEventListener('click', function() {logSet("");});
+    document.getElementById("logGamesBtn").addEventListener('click', logAvailableGames);
+    // document.getElementById("logGameInfoBtn").addEventListener('click', logGameInfo);
+    document.getElementById("logInfoBtn").addEventListener('click', logSetupInfo);
+    document.getElementById("playerBoard").addEventListener('click', playerBoardClicked);
+    document.getElementById("opponentBoard").addEventListener('click', opponentBoardClicked);
+    
+    boardWidth = document.getElementById("opponentBoard").width;
+    boardHeight = boardWidth;
+    cellSize = boardWidth / 10;
+    radius = 0.4 * cellSize;
+    
+    wsSocket = null;
+    playerName = "";
+    opponentName = "";
+    currentTurn = false;
+    gameId = null;
+    playerId = null;
+    
+    serverAddr = window.location.host;
+    serverIP = window.location.hostname;
+}
    
-joinBtn = document.getElementById("joinBtn");
-createBtn = document.getElementById("createBtn");
-beginBtn = document.getElementById("beginBtn");
-
-joinBtn.addEventListener('click', joinGame);
-createBtn.addEventListener('click', createGame);
-beginBtn.addEventListener('click', beginGame);
-document.getElementById("clearBtn").addEventListener('click', function() {logSet("");});
-document.getElementById("logGamesBtn").addEventListener('click', logAvailableGames);
-document.getElementById("playerBoard").addEventListener('click', playerBoardClicked);
-document.getElementById("opponentBoard").addEventListener('click', opponentBoardClicked);
-
-boardWidth = document.getElementById("opponentBoard").width;
-boardHeight = boardWidth;
-cellSize = boardWidth / 10;
-radius = 0.4 * cellSize;
-
-wsSocket = null;
-playerName = "";
-opponentName = "";
-currentTurn = false;
-gameId = null;
-playerId = null;
-
-serverAddr = window.location.host;
-serverIP = window.location.hostname;
 
 // support functions
 
@@ -54,7 +60,7 @@ function logSet(msg) // to do - probably a better way
 
 function getData(url, callback)
 {
-    let xhttp = new XMLHttpRequest();
+    var xhttp = new XMLHttpRequest();
 
     xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
@@ -69,7 +75,7 @@ function getData(url, callback)
 
 function clearBoards()
 {
-    let ctx = playerCanvas.getContext("2d");
+    var ctx = playerCanvas.getContext("2d");
     ctx.clearRect(0,0,playerCanvas.width, playerCanvas.height);
 
     ctx = opponentCanvas.getContext("2d");
@@ -86,10 +92,10 @@ function drawCell(context, row, col, color)
 
 function drawCellsBox(context, c1, r1, c2, r2, color)
 {
-    let x1 = c1 * cellSize + cellSize/2;
-    let y1 = r1 * cellSize + cellSize/2;
-    let x2 = c2 * cellSize + cellSize/2;
-    let y2 = r2 * cellSize + cellSize/2;
+    var x1 = c1 * cellSize + cellSize/2;
+    var y1 = r1 * cellSize + cellSize/2;
+    var x2 = c2 * cellSize + cellSize/2;
+    var y2 = r2 * cellSize + cellSize/2;
 
     context.beginPath();
     if (r1 == r2) //  horizontal
@@ -106,26 +112,26 @@ function drawCellsBox(context, c1, r1, c2, r2, color)
 
 function drawBoard(canvas, columns, rows, color)
 {
-    let ctx = canvas.getContext("2d");
+    var ctx = canvas.getContext("2d");
 
-    for (let r = 0; r < rows; r++)
+    for (var r = 0; r < rows; r++)
     {
-        for (let c = 0; c < columns; c++) drawCell(ctx, r, c, color);
+        for (var c = 0; c < columns; c++) drawCell(ctx, r, c, color);
     }
 }
 
 function drawBoat(canvas, c1, r1, c2, r2)
 {
-    let ctx = canvas.getContext("2d");
+    var ctx = canvas.getContext("2d");
 
     drawCellsBox(ctx, c1, r1, c2, r2, "LightGrey");
     if (r1 == r2) //  horizontal boat
     {
-        for (let i = c1; i <= c2; i++) drawCell(ctx, r1, i, "Grey");
+        for (var i = c1; i <= c2; i++) drawCell(ctx, r1, i, "Grey");
     }
     else //  vertical boat
     {
-        for (let i = r1; i <= r2; i++) drawCell(ctx, i, c1, "Grey");
+        for (var i = r1; i <= r2; i++) drawCell(ctx, i, c1, "Grey");
     }
 }
 
@@ -135,9 +141,9 @@ function createPlayerBoard(gameInfo)
 {
     drawBoard(playerCanvas, gameInfo.columns, gameInfo.rows, "SkyBlue");
 
-    for (let i = 0; i < gameInfo.boats.length; i++)
+    for (var i = 0; i < gameInfo.boats.length; i++)
     {
-        let boat = gameInfo.boats[i];
+        var boat = gameInfo.boats[i];
         drawBoat(playerCanvas, boat['start'][0], boat['start'][1], boat['end'][0], boat['end'][1]);
     }
 }
@@ -168,7 +174,7 @@ function opponentBoardCellClicked(col, row)
 {
     // logInfo("Opponent board cell click " + col + "," + row);
     // drawCell(opponentCanvas.getContext("2d"), row, col, "Green");
-    let msg = {action: 'fire', row: row, col:col};
+    var msg = {action: 'fire', row: row, col:col};
     // logInfo("wsSocket readyState " + wsSocket.readyState);
     wsSocket.send(JSON.stringify(msg));
 }
@@ -176,7 +182,7 @@ function opponentBoardCellClicked(col, row)
 function msgReceived(event)
 {
     console.log(event);
-    let gameMsg = JSON.parse(event.data);
+    var gameMsg = JSON.parse(event.data);
     // console.log(gameMsg);
 
     if (gameMsg.action == 'fired')
@@ -234,7 +240,7 @@ function msgReceived(event)
     else if (gameMsg.action == 'finished')
     {
         logInfo('Finished');
-        // To Do - close up all the connections
+        // To Do - close up all the connections?
     }
 
 }
@@ -268,9 +274,9 @@ function createGame()
 
     // to do - use encodeURIComponent on the values?
     playerName = document.getElementById("playerName").value;
-    let gId = document.getElementById("gameName").value;
-    let createGameUrl = "http://" + serverAddr + "/newgame?gameName=" + gId + "&player=" + playerName;
-    console.log(createGameUrl);
+    var gId = document.getElementById("gameName").value;
+    var createGameUrl = "http://" + serverAddr + "/newgame?gameName=" + gId + "&player=" + playerName;
+    // logInfo("Create game url " + createGameUrl);
 
     getData(createGameUrl, gameCreated);
 }
@@ -291,8 +297,9 @@ function joinGame()
     logSet("");
     // to do - use encodeURIComponent on the values?
     playerName = document.getElementById("playerName").value;
-    let gId = document.getElementById("gameName").value;
-    let joinGameUrl = "http://" + serverAddr + "/games/" + gId + "/join?player=" + playerName;
+    var gId = document.getElementById("gameName").value;
+    var joinGameUrl = "http://" + serverAddr + "/games/" + gId + "/join?player=" + playerName;
+    // logInfo("Join game url " + joinGameUrl);
 
     getData(joinGameUrl, gameJoined);
 }
@@ -301,29 +308,36 @@ function beginGame()
 {
     currentTurn = false;
 
-    let msg = {action: 'ready'};
+    var msg = {action: 'ready'};
     wsSocket.send(JSON.stringify(msg));
 }
 
 function logAvailableGames()
 {
-    let url = document.getElementById("serverUrl").value + "games";
+    var url = document.getElementById("serverUrl").value + "games";
     getData(url, function(data, status) {logInfo(data);} );
 }
 
 function logGameInfo(game)
 {
-    let info = "Game id: " + game.id;
+    var info = "Game id: " + game.id;
     info += "<br>Player 1: " + game.player1;
     info += "<br>Player 2: " + game.player2;
 
     info += "<br>Boats: " + game.boats.length;
-    for (let i = 0; i < game.boats.length; i++)
+    for (i = 0; i < game.boats.length; i++)
     {
-        let boat = game.boats[i];
+        boat = game.boats[i];
         info += "<br>" + boat['start'] + '-->' + boat['end'] + " length " + boat['length'];
     }
 
     info += "<br>Board:" + game.columns + "x" + game.rows + " columns x rows";
     logInfo(info)
 }
+
+function logSetupInfo()
+{
+    logInfo("Server address is "+ serverAddr);
+    logInfo("Server IP is "+ serverIP);
+}
+

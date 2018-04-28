@@ -5,9 +5,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    <script type="text/javascript" src="battleship.js?v=12"></script>
 </head>
 
-<body>
+<body onload="onLoadInitialise()">
 <div id="inputArea">
 <form>
     <!-- Server Address:<input type="text" id="serverAddr"><br><br> -->
@@ -40,10 +41,12 @@
 <div id="controls">
 <button type="button" id="clearBtn">Clear</button>
 <button type="button" id="logGamesBtn">List Games</button>
+<!-- <button type="button" id="logGameInfoBtn">Log Info</button> -->
+<button type="button" id="logInfoBtn">Log Info</button>
 </div>
 <div id="logDiv"><p></p></div>
 
 </body>
 
 </html>
-<script type="text/javascript" src="battleship.js?v=8"></script>
+

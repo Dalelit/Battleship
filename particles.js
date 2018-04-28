@@ -39,7 +39,6 @@ class Particle
 {
     constructor(x, y, radius = 3.0)
     {
-        // console.log('new particle at '+ x + ',' + y);
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -84,7 +83,7 @@ class ParticleSource
 
         this.particles = [];
 
-        for (let i = 0; i < numParticles; i++)
+        for (var i = 0; i < numParticles; i++)
         {
             // this.particles.push(new Particle(x,y));
             this.addParticle();
@@ -95,14 +94,14 @@ class ParticleSource
 
     addParticle()
     {
-        let p = new Particle(this.x,this.y);
+        var p = new Particle(this.x,this.y);
         this.particles.push(p);
         return p;
     }
 
     draw(ctx)
     {
-        for (let i = 0; i < this.particles.length; i++)
+        for (var i = 0; i < this.particles.length; i++)
         {
             ctx.beginPath();
             this.particles[i].draw(ctx)
@@ -113,7 +112,7 @@ class ParticleSource
 
     update(dt)
     {
-        for (let i = 0; i < this.particles.length; i++)
+        for (var i = 0; i < this.particles.length; i++)
         {
             this.particles[i].update(dt, this.ddx, this.ddy);
 
@@ -144,7 +143,7 @@ class ParticleSourceManager
 
     updateParticleSources(dt)
     {
-        for (let i = 0; i < this.particlesSources.length; i++)
+        for (var i = 0; i < this.particlesSources.length; i++)
         {
             this.particlesSources[i].update(dt);
     
@@ -162,47 +161,35 @@ class ParticleSourceManager
         if (this.drawingCanvas == null) return;
     
         this.updateParticleSources(this.deltaTime);
-        this.draw();
     
-        if (this.particlesSources.length == 0)
-        {
-            // don't waste electricity running it any more.
-            stop();
-        }
+        if (this.particlesSources.length > 0) this.draw();
     }
     
     draw(clearCanvas = true)
     {
-        let ctx = this.drawingCanvas.getContext("2d");
+        var ctx = this.drawingCanvas.getContext("2d"); // To Do - could move this too the manager or source
 
         if (clearCanvas) ctx.clearRect(0,0,this.drawingCanvas.width, this.drawingCanvas.height);
 
-        for (let i = 0; i < this.particlesSources.length; i++)
+        for (var i = 0; i < this.particlesSources.length; i++)
         {
             this.particlesSources[i].draw(ctx);
         }
+
     }
 
-    start(canvas)
+    init(canvas)
     {
         this.drawingCanvas = canvas;
-        // note - couldn't get setInterval calling this.update function directly...
-        this.updateInterval = setInterval(function(mgr) {mgr.update();}, this.deltaTime, this);
     }
 
-    stop()
-    {
-        console.log('stop');
-        this.drawingCanvas = null;
-        clearInterval(this.updateInterval);
-    }
 }
 
 ///////////////////////////
 // Variations
 function CreateExplosion(manager, x,y)
 {
-    let psrc = new ParticleSource(manager, x, y, 10, 0.0, -0.0001);
+    var psrc = new ParticleSource(manager, x, y, 10, 0.0, -0.0001);
     psrc.color = 'yellow';
 
     psrc = new ParticleSource(manager, x, y, 10, 0.0, -0.0001);
@@ -214,7 +201,7 @@ function CreateExplosion(manager, x,y)
 
 function CreateSplash(manager, x,y)
 {
-    let psrc = new ParticleSource(manager, x, y, 10, 0.0, 0.00001);
+    var psrc = new ParticleSource(manager, x, y, 10, 0.0, 0.00001);
     psrc.color = 'blue';
     psrc.particles.forEach(function(particle, indx) { particle.dx *= 2.0; particle.dy = -Math.abs(particle.dy);  });
 
@@ -229,21 +216,21 @@ function CreateSplash(manager, x,y)
 
 function CreateFire(manager, x,y)
 {
-    let psrc = new ParticleSource(manager, x, y, 0);
+    var psrc = new ParticleSource(manager, x, y, 0);
     psrc.color = 'grey';
-    function greyParticle(source) {let p = source.addParticle(); p.dx = randomRangeFloat(-8.0/3000.0, 8.0/3000.0); p.dy = randomRangeFloat(-10.0/3000.0, -15.0/3000.0); p.age *= 2; p.radius = 4;}
+    function greyParticle(source) {var p = source.addParticle(); p.dx = randomRangeFloat(-8.0/3000.0, 8.0/3000.0); p.dy = randomRangeFloat(-10.0/3000.0, -15.0/3000.0); p.age *= 2; p.radius = 4;}
     greyParticle(psrc); // add one particle.
     setInterval(greyParticle, 300, psrc);
 
     psrc = new ParticleSource(manager, x, y, 0);
     psrc.color = 'yellow';
-    function yellowParticle(source) {let p = source.addParticle(); p.dx = randomRangeFloat(-6.0/3000.0, 6.0/3000.0); p.dy = randomRangeFloat(-7.0/3000.0, -10.0/3000.0); p.age *= 2; p.radius = 3;}
+    function yellowParticle(source) {var p = source.addParticle(); p.dx = randomRangeFloat(-6.0/3000.0, 6.0/3000.0); p.dy = randomRangeFloat(-7.0/3000.0, -10.0/3000.0); p.age *= 2; p.radius = 3;}
     yellowParticle(psrc); // add one particle.
     setInterval(yellowParticle, 300, psrc);
 
     psrc = new ParticleSource(manager, x, y, 0);
     psrc.color = 'red';
-    function redParticle(source) {let p = source.addParticle(); p.dx = randomRangeFloat(-3.0/3000.0, 3.0/3000.0); p.dy = randomRangeFloat(-3.0/3000.0, -7.0/3000.0); p.age *= 1; p.radius = 2;}
+    function redParticle(source) {var p = source.addParticle(); p.dx = randomRangeFloat(-3.0/3000.0, 3.0/3000.0); p.dy = randomRangeFloat(-3.0/3000.0, -7.0/3000.0); p.age *= 1; p.radius = 2;}
     redParticle(psrc); // add one particle.
     setInterval(redParticle, 300, psrc);
 
@@ -252,37 +239,47 @@ function CreateFire(manager, x,y)
 ////////////////////////////////
 // Test function for a canvas
 
-mgrExp = new ParticleSourceManager(); // to do - a singleton? or something within the test function?
-mgrSplash = new ParticleSourceManager(); // to do - a singleton? or something within the test function?
-mgrFire = new ParticleSourceManager(); // to do - a singleton? or something within the test function?
+var mgrExp = new ParticleSourceManager(); // to do - a singleton? or something within the test function?
+var mgrSplash = new ParticleSourceManager(); // to do - a singleton? or something within the test function?
+var mgrFire = new ParticleSourceManager(); // to do - a singleton? or something within the test function?
 
-function testParticleExplosion(canvas, event)
+function mainParticleLoop()
 {
-    let x = 0.0 + event.offsetX;
-    let y = 0.0 + event.offsetY;
+    mgrExp.update();
+    mgrSplash.update();
+    mgrFire.update();
+    window.requestAnimationFrame(mainParticleLoop);
+}
+
+function placeParticleExplosion(canvas, event)
+{
+    var x = 0.0 + event.offsetX;
+    var y = 0.0 + event.offsetY;
 
     CreateExplosion(mgrExp, x,y);
 
-    if (mgrExp.drawingCanvas == null) mgrExp.start(canvas);
+    if (mgrExp.drawingCanvas == null) mgrExp.init(canvas);
 }
 
-function testParticleSplash(canvas, event)
+function placeParticleSplash(canvas, event)
 {
-    let x = 0.0 + event.offsetX;
-    let y = 0.0 + event.offsetY;
+    var x = 0.0 + event.offsetX;
+    var y = 0.0 + event.offsetY;
 
     CreateSplash(mgrSplash, x,y);
 
-    if (mgrSplash.drawingCanvas == null) mgrSplash.start(canvas);
+    if (mgrSplash.drawingCanvas == null) mgrSplash.init(canvas);
 }
 
-function testParticleFire(canvas, event)
+function placeParticleFire(canvas, event)
 {
-    let x = 0.0 + event.offsetX;
-    let y = 0.0 + event.offsetY;
+    var x = 0.0 + event.offsetX;
+    var y = 0.0 + event.offsetY;
 
     CreateFire(mgrFire, x,y);
 
-    if (mgrFire.drawingCanvas == null) mgrFire.start(canvas);
+    if (mgrFire.drawingCanvas == null) mgrFire.init(canvas);
 }
 
+// start the animcation loop
+window.requestAnimationFrame(mainParticleLoop);
