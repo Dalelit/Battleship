@@ -37,6 +37,15 @@ function randomRGB()
 function RGBAtoString(rgba)
 {
     return 'rgba(' + rgba[0] + ',' + rgba[1] + ',' + rgba[2] + ',' + rgba[3] + ')';
+    // return 'rgba(' + Math.floor(rgba[0]) + ',' + Math.floor(rgba[1]) + ',' + Math.floor(rgba[2]) + ',' + rgba[3] + ')';
+}
+
+function SetSpeedAndDirection(p, minSpeed, maxSpeed, minAngle, maxAngle)
+{
+    var speed = randomRangeFloat(minSpeed,maxSpeed) * 60 / 1000;
+    var dir = randomRangeFloat(minAngle * Math.PI / 180.0, maxAngle * Math.PI / 180.0);
+    p.dx = Math.cos(dir) * speed;
+    p.dy = -Math.sin(dir) * speed;
 }
 
 ////////////////////////////////////
@@ -53,36 +62,28 @@ class Particle
         this.dx = 0;
         this.dy = 0;
         this.age = 1000;
-        this.color = [255,255,255,255];
+        this.color = [255,255,255,1.0];
     }
 
     draw(ctx)
     {
+        ctx.fillStyle = RGBAtoString(this.color);
+        // ctx.globalAlpha= this.color[3];
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, 2*Math.PI);
-        ctx.fillStyle = RGBAtoString(this.color);
+        // ctx.closePath();
         ctx.fill();
     }
 }
 
-function SetSpeedAndDirection(p, minSpeed, maxSpeed, minAngle, maxAngle)
-{
-    var speed = randomRangeFloat(minSpeed,maxSpeed) * 60 / 1000;
-    var dir = randomRangeFloat(minAngle * Math.PI / 180.0, maxAngle * Math.PI / 180.0);
-    p.dx = Math.cos(dir) * speed;
-    p.dy = -Math.sin(dir) * speed;
-}
-
 function DefaultParticleInitialiser(p)
 {
-    // console.log('DefaultParticleInitialiser');
     p.color = randomRGB();
     SetSpeedAndDirection(p, 5, 10, 0, 360);
 }
 
 function DefaultParticleUpdater(p, dt)
 {
-    // console.log('DefaultParticleUpdater');
     p.x += p.dx * dt;
     p.y += p.dy * dt;
     p.age -= dt;
@@ -90,38 +91,49 @@ function DefaultParticleUpdater(p, dt)
 
 function SplashParticleInitialiser(p)
 {
-    // console.log('SplashParticleInitialiser');
     p.color = [0, 0, 255, 255];
     SetSpeedAndDirection(p, 10, 15, 60, 120);
-    p.ddy = 1 * 60 / 1000;
+    p.ddy = 7 / 1000;
 }
 
 function SplashParticleUpdater(p, dt)
 {
-    // console.log('SplashParticleUpdater');
     p.x += p.dx * dt;
     p.y += p.dy * dt;
-    p.dy += p.ddy;
+    p.dy += p.ddy * dt;
     p.age -= dt;
 }
 
 function FireParticleInitialiser(p)
 {
-    // console.log('SplashParticleInitialiser');
-    p.color = [255, 0, 0, 255];
+    var chance = Math.random();
+
+    if (chance < 0.1) p.color = [255, 0, 0, 1.0];
+    else if (chance < 0.3) p.color = [255, 150, 50, 1.0];
+    else if (chance < 0.6) p.color = [255, 255, 0, 1.0];
+    else p.color = [0, 0, 0, 0.5];
+    
     SetSpeedAndDirection(p, 0.1, 1, 60, 120);
-    p.ddy = -0.1 * 60 / 1000;
-    p.lifeSpan = p.age;
+    p.ddy = -0.1 / 1000;
+
+    p.dalpha = -p.color[3] / p.age;
+    
+    // p.dcolor = [];
+    // p.dcolor[0] = 0; // -p.color[0] / p.age;
+    // p.dcolor[1] = 0; // -p.color[1] / p.age;
+    // p.dcolor[2] = 0; // -p.color[2] / p.age;
+    // p.dcolor[3] = -p.color[3] / p.age;
 }
 
 function FireParticleUpdater(p, dt)
 {
-    // console.log('SplashParticleUpdater');
     p.x += p.dx * dt;
     p.y += p.dy * dt;
-    p.dy += p.ddy;
+    p.dy += p.ddy * dt;
     p.age -= dt;
-    p.color[3] = 255 * p.age / p.lifeSpan;
+
+    p.color[3] += p.dalpha * dt;
+    // for (var i = 0; i < 4; i++) p.color[i] += p.dcolor[i] * dt;
 }
 
 class ParticleSource
@@ -146,8 +158,7 @@ class ParticleSource
 
         if (emmitRatePerSec > 0)
         {
-            console.log("creating an emmiter");
-            this.interval = setInterval(function(ps) {ps.addParticle();}, 1000 / emmitRatePerSec, this);
+            this.interval = setInterval((ps) => {ps.addParticle();}, 1000 / emmitRatePerSec, this);
         }
     }
 
@@ -161,10 +172,7 @@ class ParticleSource
 
     draw(ctx)
     {
-        for (var i = 0; i < this.particles.length; i++)
-        {
-            this.particles[i].draw(ctx)
-        }
+        this.particles.map( (p) => {p.draw(ctx);} );
     }
 
     update(dt)
@@ -202,13 +210,6 @@ class ParticleSourceManager
         this.particlesSources.push(src);
     }
 
-    loopStep(dt)
-    {
-        this.update(dt);
-        this.clearCanvas();
-        this.draw();
-    }
-
     update(dt)
     {
         for (var i = 0; i < this.particlesSources.length; i++)
@@ -242,66 +243,3 @@ class ParticleSourceManager
 
 }
 
-////////////////////////////////
-// Test function for a canvas
-
-// To Do - a singleton? or something within the test function?
-
-var mgrExp = new ParticleSourceManager(); 
-var mgrSplash = new ParticleSourceManager();
-var mgrFire = new ParticleSourceManager();
-
-function mainParticleLoop()
-{
-    var dt = 1000 / 60; // To Do: assuming fixed frame rate.
-
-    mgrExp.loopStep(dt);
-    mgrSplash.loopStep(dt);
-    mgrFire.loopStep(dt);
-    window.requestAnimationFrame(mainParticleLoop);
-}
-
-function placeParticleExplosion(canvas, event)
-{
-    if (mgrExp.drawingCanvas == null) mgrExp.init(canvas);
-
-    var x = event.offsetX;
-    var y = event.offsetY;
-
-    var ps = new ParticleSource(x, y);
-    ps.initialise(10);
-    mgrExp.addParticleSource(ps);
-}
-
-function placeParticleSplash(canvas, event)
-{
-    if (mgrSplash.drawingCanvas == null) mgrSplash.init(canvas);
-
-    var x = 0.0 + event.offsetX;
-    var y = 0.0 + event.offsetY;
-
-    var ps = new ParticleSource(x, y);
-    ps.particleInitialiser = SplashParticleInitialiser;
-    ps.particleUpdater = SplashParticleUpdater;
-    ps.initialise(20);
-
-    mgrSplash.addParticleSource(ps);
-}
-
-function placeParticleFire(canvas, event)
-{
-    if (mgrFire.drawingCanvas == null) mgrFire.init(canvas);
-
-    var x = 0.0 + event.offsetX;
-    var y = 0.0 + event.offsetY;
-
-    var ps = new ParticleSource(x, y);
-    ps.particleInitialiser = FireParticleInitialiser;
-    ps.particleUpdater = FireParticleUpdater;
-    ps.initialise(1,20);
-
-    mgrFire.addParticleSource(ps);
-}
-
-// start the animcation loop
-window.requestAnimationFrame(mainParticleLoop);
