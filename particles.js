@@ -1,8 +1,5 @@
 ///////////////////////////////
 // To Do
-// - fix it so the manager is not global
-// - play around with the dials to get it looking right
-// - refactor... since it was a hack to get working
 // - move the arrays to fixed size and swap dead particles around
 // - particle sources initialised with 0 get removed before the emmiter can kick in
 // - try adding it to the game now
@@ -106,6 +103,11 @@ function SplashParticleUpdater(p, dt)
 
 function FireParticleInitialiser(p)
 {
+    // wiggle location
+    p.x += randomRangeFloat(-3.0, 3.0);
+    p.y += randomRangeFloat(-3.0, 3.0);
+
+    // pick a colour
     var chance = Math.random();
 
     if (chance < 0.1) p.color = [255, 0, 0, 1.0];
@@ -117,12 +119,6 @@ function FireParticleInitialiser(p)
     p.ddy = -0.1 / 1000;
 
     p.dalpha = -p.color[3] / p.age;
-    
-    // p.dcolor = [];
-    // p.dcolor[0] = 0; // -p.color[0] / p.age;
-    // p.dcolor[1] = 0; // -p.color[1] / p.age;
-    // p.dcolor[2] = 0; // -p.color[2] / p.age;
-    // p.dcolor[3] = -p.color[3] / p.age;
 }
 
 function FireParticleUpdater(p, dt)
@@ -133,7 +129,6 @@ function FireParticleUpdater(p, dt)
     p.age -= dt;
 
     p.color[3] += p.dalpha * dt;
-    // for (var i = 0; i < 4; i++) p.color[i] += p.dcolor[i] * dt;
 }
 
 class ParticleSource
@@ -188,6 +183,34 @@ class ParticleSource
             }
         }
     }
+}
+
+function explosionParticleSource(x, y)
+{
+    var ps = new ParticleSource(x, y);
+    ps.initialise(30);
+
+    return ps;
+}
+
+function splashParticleSource(x, y)
+{
+    var ps = new ParticleSource(x, y);
+    ps.particleInitialiser = SplashParticleInitialiser;
+    ps.particleUpdater = SplashParticleUpdater;
+    ps.initialise(20);
+
+    return ps;
+}
+
+function fireParticleSource(x, y)
+{
+    var ps = new ParticleSource(x, y);
+    ps.particleInitialiser = FireParticleInitialiser;
+    ps.particleUpdater = FireParticleUpdater;
+    ps.initialise(1,20);
+
+    return ps;
 }
 
 // used to manage all the sources on 1 canvas

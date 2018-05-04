@@ -11,8 +11,11 @@
 
 function onLoadInitialise()
 {
-    playerCanvas = document.getElementById("playerBoard");
-    opponentCanvas = document.getElementById("opponentBoard");
+    playerCanvas = document.getElementById("playerArea");
+    playerCtx = playerCanvas.getContext("2d");
+    opponentCanvas = document.getElementById("opponentArea");
+    opponentCtx = opponentCanvas.getContext("2d");
+
     logDiv = document.getElementById("logDiv");
        
     joinBtn = document.getElementById("joinBtn");
@@ -26,10 +29,10 @@ function onLoadInitialise()
     document.getElementById("logGamesBtn").addEventListener('click', logAvailableGames);
     // document.getElementById("logGameInfoBtn").addEventListener('click', logGameInfo);
     document.getElementById("logInfoBtn").addEventListener('click', logSetupInfo);
-    document.getElementById("playerBoard").addEventListener('click', playerBoardClicked);
-    document.getElementById("opponentBoard").addEventListener('click', opponentBoardClicked);
+    // playerCanvas.addEventListener('click', playerBoardClicked);
+    opponentCanvas.addEventListener('click', opponentBoardClicked);
     
-    boardWidth = document.getElementById("opponentBoard").width;
+    boardWidth = opponentCanvas.width;
     boardHeight = boardWidth;
     cellSize = boardWidth / 10;
     radius = 0.4 * cellSize;
@@ -40,9 +43,22 @@ function onLoadInitialise()
     currentTurn = false;
     gameId = null;
     playerId = null;
+    gameInfo = null;
     
     serverAddr = window.location.host;
     serverIP = window.location.hostname;
+
+    particleMgrPlayerBoard = new ParticleSourceManager();
+    particleMgrPlayerBoard.init(playerCanvas);
+    particleMgrOpponentBoard = new ParticleSourceManager();
+    particleMgrOpponentBoard.init(opponentCanvas);
+
+    playerBoard = null;
+    opponentBoard = null;
+    lastMoveRow = null;
+    lastMoveCol = null;
+
+    window.requestAnimationFrame(animationLoop);
 }
    
 
@@ -71,23 +87,64 @@ function getData(url, callback)
     xhttp.send();
 }
 
+// animation loop
+var last, startTime = window.performance.now();
+
+function animationLoop()
+{
+    var now = window.performance.now();
+    var dt = now - last;
+
+    clearBoards();
+
+    particleMgrPlayerBoard.update(dt);
+    drawBoats(playerCtx);
+    drawBoard(playerBoard, playerCtx);
+    if (lastMoveCol != null && lastMoveRow != null) drawCellBoarder(playerCtx, lastMoveCol, lastMoveRow, 'Green');
+    particleMgrPlayerBoard.draw();
+
+    particleMgrOpponentBoard.update(dt);
+    drawBoard(opponentBoard, opponentCtx);
+    particleMgrOpponentBoard.draw();
+
+    last = now;
+    window.requestAnimationFrame(animationLoop);
+}
+
+
 // drawing functions
 
 function clearBoards()
 {
-    var ctx = playerCanvas.getContext("2d");
-    ctx.clearRect(0,0,playerCanvas.width, playerCanvas.height);
-
-    ctx = opponentCanvas.getContext("2d");
-    ctx.clearRect(0,0,opponentCanvas.width, opponentCanvas.height);
+    playerCtx.clearRect(0,0,playerCanvas.width, playerCanvas.height);
+    opponentCtx.clearRect(0,0,opponentCanvas.width, opponentCanvas.height);
 }
 
-function drawCell(context, row, col, color)
+function colToX(col)
+{
+    return col * cellSize + cellSize/2;
+}
+
+function rowToY(row)
+{
+    return row * cellSize + cellSize/2;
+}
+
+function drawCell(context, col, row, color)
 {
     context.beginPath();
     context.arc(col * cellSize + cellSize/2, row * cellSize + cellSize/2, radius, 0, 2*Math.PI);
     context.fillStyle = color;
     context.fill();
+}
+
+function drawCellBoarder(context, col, row, color)
+{
+    context.beginPath();
+    context.arc(col * cellSize + cellSize/2, row * cellSize + cellSize/2, radius, 0, 2*Math.PI);
+    context.strokeStyle = color;
+    context.lineWidth = 3;
+    context.stroke();
 }
 
 function drawCellsBox(context, c1, r1, c2, r2, color)
@@ -110,42 +167,90 @@ function drawCellsBox(context, c1, r1, c2, r2, color)
     context.fill();
 }
 
-function drawBoard(canvas, columns, rows, color)
-{
-    var ctx = canvas.getContext("2d");
-
-    for (var r = 0; r < rows; r++)
-    {
-        for (var c = 0; c < columns; c++) drawCell(ctx, r, c, color);
-    }
-}
-
-function drawBoat(canvas, c1, r1, c2, r2)
-{
-    var ctx = canvas.getContext("2d");
-
-    drawCellsBox(ctx, c1, r1, c2, r2, "LightGrey");
-    if (r1 == r2) //  horizontal boat
-    {
-        for (var i = c1; i <= c2; i++) drawCell(ctx, r1, i, "Grey");
-    }
-    else //  vertical boat
-    {
-        for (var i = r1; i <= r2; i++) drawCell(ctx, i, c1, "Grey");
-    }
-}
-
 //game/ui functions
 
-function createPlayerBoard(gameInfo)
+function drawBoats(ctx)
 {
-    drawBoard(playerCanvas, gameInfo.columns, gameInfo.rows, "SkyBlue");
+    if (gameInfo == null) return;
 
     for (var i = 0; i < gameInfo.boats.length; i++)
     {
         var boat = gameInfo.boats[i];
-        drawBoat(playerCanvas, boat['start'][0], boat['start'][1], boat['end'][0], boat['end'][1]);
+        var c1 = boat['start'][0];
+        var r1 = boat['start'][1];
+        var c2 = boat['end'][0];
+        var r2 = boat['end'][1];
+        drawCellsBox(ctx, c1, r1, c2, r2, "LightGrey");
     }
+}
+
+function drawBoard(board, ctx)
+{
+    if (board == null) return;
+
+    for (var r = 0; r < board.length; r++)
+    {
+        for (var c = 0; c < board[r].length; c++)
+        {
+            var cell = board[r][c];
+            if (cell[1] == 2) // hit
+            {
+                drawCell(ctx, c, r, 'Red');
+            }
+            else if (cell[1] == 3) // sunk
+            {
+                drawCell(ctx, c, r, 'Orange');
+            }
+            else if (cell[1] == 1) // miss
+            {
+                drawCell(ctx, c, r, 'Black');
+            }
+            else if (cell[0] < 0)
+            {
+                drawCell(ctx, c, r, 'SkyBlue');
+            }
+            else // cell[0] is boat number
+            {
+                drawCell(ctx, c, r, 'Grey');
+            }
+        }
+    }
+}
+
+function initialiseBoard(gameInfo, includeBoats = false)
+{
+    var board = [];
+
+    for (var r = 0; r < gameInfo.rows; r++)
+    {
+        var row = [];
+        for (var c = 0; c < gameInfo.columns; c++)
+        {
+            row.push([-1, 0]);
+        }
+        board.push(row);
+    }
+
+    if (!includeBoats) return board;
+
+    for (var i = 0; i < gameInfo.boats.length; i++)
+    {
+        var boat = gameInfo.boats[i];
+        var c1 = boat['start'][0];
+        var r1 = boat['start'][1];
+        var c2 = boat['end'][0];
+        var r2 = boat['end'][1];
+        if (r1 == r2) //  horizontal boat
+        {
+            for (var c = c1; c <= c2; c++) board[r1][c] = [i, 0];
+        }
+        else //  vertical boat
+        {
+            for (var r = r1; r <= r2; r++) board[r][c1] = [i, 0];
+        }
+    }
+
+    return board;
 }
 
 function playerBoardClicked(event)
@@ -158,11 +263,6 @@ function playerBoardCellClicked(col, row)
     logInfo("Player board cell click " + col + "," + row);
 }
 
-function createOpponentBoard(gameInfo)
-{
-    drawBoard(opponentCanvas, gameInfo.columns, gameInfo.rows, "LightSkyBlue");
-}
-
 function opponentBoardClicked(event)
 {
     if (!currentTurn) return;
@@ -173,26 +273,33 @@ function opponentBoardClicked(event)
 function opponentBoardCellClicked(col, row)
 {
     // logInfo("Opponent board cell click " + col + "," + row);
-    // drawCell(opponentCanvas.getContext("2d"), row, col, "Green");
     var msg = {action: 'fire', row: row, col:col};
-    // logInfo("wsSocket readyState " + wsSocket.readyState);
     wsSocket.send(JSON.stringify(msg));
 }
 
 function msgReceived(event)
 {
-    console.log(event);
+    // console.log(event);
     var gameMsg = JSON.parse(event.data);
     // console.log(gameMsg);
 
     if (gameMsg.action == 'fired')
     {
         if (gameMsg.result == 'hit')
-            drawCell(opponentCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Red");
+        {
+            opponentBoard[gameMsg.row][gameMsg.col][1] = 2;
+            particleMgrOpponentBoard.addParticleSource(explosionParticleSource(colToX(gameMsg.col), rowToY(gameMsg.row)));
+        }
         else if (gameMsg.result == 'sunk')
-            drawCell(opponentCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Orange");
+        {
+            opponentBoard[gameMsg.row][gameMsg.col][1] = 3;
+            particleMgrOpponentBoard.addParticleSource(fireParticleSource(colToX(gameMsg.col), rowToY(gameMsg.row)));
+        }
         else // 'missed'
-            drawCell(opponentCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Black");
+        {
+            opponentBoard[gameMsg.row][gameMsg.col][1] = 1;
+            particleMgrOpponentBoard.addParticleSource(splashParticleSource(colToX(gameMsg.col), rowToY(gameMsg.row)));
+        }
 
         if (gameMsg.turn == 'won')
         {
@@ -205,12 +312,24 @@ function msgReceived(event)
     }
     else if (gameMsg.action == 'targeted')
     {
+        lastMoveCol = gameMsg.col;
+        lastMoveRow = gameMsg.row;
+
         if (gameMsg.result == 'hit')
-            drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Red");
+        {
+            playerBoard[gameMsg.row][gameMsg.col][1] = 2;
+            particleMgrPlayerBoard.addParticleSource(explosionParticleSource(colToX(gameMsg.col), rowToY(gameMsg.row)));
+        }
         else if (gameMsg.result == 'sunk')
-            drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Orange");
+        {
+            playerBoard[gameMsg.row][gameMsg.col][1] = 3;
+            particleMgrPlayerBoard.addParticleSource(fireParticleSource(colToX(gameMsg.col), rowToY(gameMsg.row)));
+        }
         else // 'missed'
-            drawCell(playerCanvas.getContext("2d"), gameMsg.row, gameMsg.col, "Black");
+        {
+            playerBoard[gameMsg.row][gameMsg.col][1] = 1;
+            particleMgrPlayerBoard.addParticleSource(splashParticleSource(colToX(gameMsg.col), rowToY(gameMsg.row)));
+        }
 
         if (gameMsg.turn == 'lost')
         {
@@ -249,12 +368,11 @@ function gameCreated(data, status)
 {
     // logInfo(status);
     // logInfo(data);
-    var gameInfo = JSON.parse(data);
-    console.log(gameInfo);
+    gameInfo = JSON.parse(data);
+    // console.log(gameInfo);
 
-    clearBoards();
-    createPlayerBoard(gameInfo);
-    createOpponentBoard(gameInfo);
+    playerBoard = initialiseBoard(gameInfo, true);
+    opponentBoard = initialiseBoard(gameInfo);
 
     // connect to socket
     if (wsSocket) wsSocket.close();

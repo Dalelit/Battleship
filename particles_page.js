@@ -2,10 +2,10 @@
 // Test function for a canvas
 
 // To Do - a singleton? or something within the test function?
-
 var mgrExp = new ParticleSourceManager(); 
 var mgrSplash = new ParticleSourceManager();
 var mgrFire = new ParticleSourceManager();
+var mgrAll = new ParticleSourceManager();
 
 var last, startTime = window.performance.now();
 
@@ -24,6 +24,7 @@ function mainParticleLoop()
     loopStep(mgrExp, dt);
     loopStep(mgrSplash, dt);
     loopStep(mgrFire, dt);
+    loopStep(mgrAll, dt);
 
     last = now;
     window.requestAnimationFrame(mainParticleLoop);
@@ -36,8 +37,7 @@ function placeParticleExplosion(canvas, event)
     var x = event.offsetX;
     var y = event.offsetY;
 
-    var ps = new ParticleSource(x, y);
-    ps.initialise(10);
+    var ps = explosionParticleSource(x,y);
     mgrExp.addParticleSource(ps);
 }
 
@@ -48,11 +48,7 @@ function placeParticleSplash(canvas, event)
     var x = 0.0 + event.offsetX;
     var y = 0.0 + event.offsetY;
 
-    var ps = new ParticleSource(x, y);
-    ps.particleInitialiser = SplashParticleInitialiser;
-    ps.particleUpdater = SplashParticleUpdater;
-    ps.initialise(20);
-
+    var ps = splashParticleSource(x,y);
     mgrSplash.addParticleSource(ps);
 }
 
@@ -63,12 +59,20 @@ function placeParticleFire(canvas, event)
     var x = 0.0 + event.offsetX;
     var y = 0.0 + event.offsetY;
 
-    var ps = new ParticleSource(x, y);
-    ps.particleInitialiser = FireParticleInitialiser;
-    ps.particleUpdater = FireParticleUpdater;
-    ps.initialise(1,20);
-
+    var ps = fireParticleSource(x,y);
     mgrFire.addParticleSource(ps);
+}
+
+function placeAll(canvas, event)
+{
+    if (mgrAll.drawingCanvas == null) mgrAll.init(canvas);
+
+    var x = 0.0 + event.offsetX;
+    var y = 0.0 + event.offsetY;
+
+    mgrAll.addParticleSource(fireParticleSource(x,y));
+    mgrAll.addParticleSource(explosionParticleSource(x,y));
+    mgrAll.addParticleSource(splashParticleSource(x,y));
 }
 
 // start the animcation loop
