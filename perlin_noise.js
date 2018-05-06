@@ -151,15 +151,26 @@ function drawBackBuffer()
     for (y = 0; y < pn_back_buffer.height; y++) for (x = 0; x < pn_back_buffer.width; x++)
     {
         var c = pn.get_value(x,y);
-        pn_back_buffer.data[indx] = c*c * r;
+
+        // make it more 'cloudy'
+        if (c > 0.8) c = 1;
+        else if (c > 0.5) { c = (c - 0.5) / 0.3; c = c*c; }
+        else c = 0;
+
+        // not too bright
+        // c *= 0.75;
+        // c *= c;
+
+        pn_back_buffer.data[indx] = c * r;
         indx++;
-        pn_back_buffer.data[indx] = c*c * g;
+        pn_back_buffer.data[indx] = c * g;
         indx++;
-        pn_back_buffer.data[indx] = c*b;
+        pn_back_buffer.data[indx] = c * b;
         indx++;
         pn_back_buffer.data[indx] = 255;
         indx++;
     }
+
 }
 
 function displayBackBuffer()
@@ -171,12 +182,15 @@ running = false;
 
 function mainPerlinLoop()
 {
-    pn.shift_offset(15 / 1000 * 60, -10 / 1000 * 60);
+    pn.shift_offset(x_shift, y_shift);
     drawBackBuffer();
     displayBackBuffer();
 
     if (running) window.requestAnimationFrame(mainPerlinLoop);
 }
+
+/////////////////////////////////////////////////
+// UI and kickoff functions
 
 function placePerlinNoise(canvas, event)
 {
@@ -184,6 +198,9 @@ function placePerlinNoise(canvas, event)
     {
         pn_ctx = canvas.getContext("2d");
         pn = new Perlin_Noise(canvas.width, canvas.height);
+
+        x_shift = (Math.random() * 30 - 15) / 1000 * 60;
+        y_shift = (Math.random() * 30 - 15) / 1000 * 60;
 
         // create back buffer
         pn_back_buffer = pn_ctx.createImageData(canvas.width, canvas.height);
